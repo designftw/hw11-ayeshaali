@@ -1,0 +1,30 @@
+#error-message {
+    width: 40em;
+    padding: 10px;
+    border-left: solid 5px red;
+    background-color: #f5b3b3;
+}
+
+body {
+    max-width: 100%;
+}
+
+#options {
+    display: flex;
+    flex-direction: row;
+}
+
+.recipient-container {
+    display: flex;
+    flex-direction: row;
+}
+
+li {
+    word-break: break-all;
+}
+
+.sendmsg {
+    display: flex;
+    flex-direction: column;
+    width: 15em;
+}
