@@ -4,6 +4,7 @@
   <script type="module" src="./chat.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" />
   <link rel="stylesheet" href="style.css">
+  <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
 </head>
 <body>
   <div id="app">
@@ -11,7 +12,7 @@
       My Cool Chat App
     </h1>
 
-    <h2>
+    <h2 :id="myUsername ? 'my-heading' : '' ">
       Welcome {{myUsername}}
     </h2>
 
@@ -30,18 +31,16 @@
       <p>
         <form @submit.prevent="setUsername">
           <input v-model="preferredUsername" placeholder="Choose a username..."/>
-          <input type="submit" value="Set Username"/>
+          <button type="submit" value="Set Username">Set Username</button>
         </form>
-        {{ usernameResult }}
+        <p id="result" class="transform">{{ usernameResult }}</p>
       </p>
       <!-- End Problem 1 Solution -->
 
       <p>
         My Name: <name :actor="$gf.me" :editable="true"></name>
       </p>
-      <!-- <p>
-        My Profile Picture: <profile :actor="$gf.me" :editable="true"></profile>
-      </p> -->
+      <profile :actor="$gf.me" :editable="true"></profile>
 
       <p id="options">
         Change chat format:
@@ -69,7 +68,7 @@
           </label>
           <input id="recipient" v-model="recipientUsernameSearch"/>
           <input type="submit" value="Search"/>
-          <p v-if="recipient" >Chatting with {{ recipientUsername }}</p>
+          <p v-if="recipient" id="success-message" >Chatting with {{ recipientUsername }}</p>
           <p v-else id="error-message"> Username "{{ recipientUsername }}" does not exist! </p>
         </form>
       </div>
@@ -79,7 +78,9 @@
       <form @submit.prevent="sendMessage" class="sendmsg">
         <input v-model="messageText" placeholder="Type a message..."/>
         <input type="file" accept="image/*" @change="onImageAttachment"/>
-        <input type="submit" value="Send" :disabled="(privateMessaging && !recipient) | (!privateMessaging && channel.length == 0) | messageText.length==0" />
+        <button type="submit" value="Send" :disabled="(privateMessaging && !recipient) | (!privateMessaging && channel.length == 0) | messageText.length==0">
+          Send
+        </button>
       </form>
       <ol>
         <!-- List all the messages -->
@@ -92,15 +93,14 @@
           </form>
 
           <!-- Otherwise, display a bunch of properties from the message -->
-          <ul v-else>
+          <ul v-else class="message-contents">
+            <span class="message-from">
+              <profile :actor="message.actor"></profile>
+              <name :actor="message.actor"></name>
+              <span> [{{actorsToUsernames[message.actor]}}] sent</span>
+            </span>
             <li>
-              Message: {{ message.content }} 
-            </li>
-            <li>
-              From Name: <name :actor="message.actor"></name>
-            </li>
-            <li>
-              From Username: {{ actorsToUsernames[message.actor] }}
+              {{ message.content }} 
             </li>
             <template v-if="privateMessaging">
               <li>
@@ -119,8 +119,14 @@
               </span>
               <img v-else :src="imageDownloads[message.attachment.magnet]" />
             </li>
-            <summary>
-              <details>
+            <summary class="summary">
+              <details class="detail">
+                <li>
+                  Published at Time: {{ message.published }}
+                </li>
+                <li>
+                  Last Edited at Time: {{ message.updated }}
+                </li>
                 <li>
                   From Actor ID: {{ message.actor }}
                 </li>
@@ -130,13 +136,6 @@
                   </li>
                 </template>
                 <li>
-                  Published at Time: {{ message.published }}
-                </li>
-                <li>
-                  Last Edited at Time: {{ message.updated }}
-                </li>
-                <li>
-                  <!-- This is a unique identifier that can be used to "link" to messages -->
                   ID: {{ message.id }}
                 </li>
                 <li>
@@ -145,15 +144,11 @@
               </details>
             </summary>
 
-            <!-- Only add these controls if the message is ours -->
-            <!-- You can't edit or delete other people's messages -->
             <template v-if="message.actor==$gf.me">
-              <li>
+              <li class="message-buttons">
                 <button @click="removeMessage(message)">
                   Delete Message
                 </button>
-              </li>
-              <li>
                 <button @click="startEditMessage(message)">
                   Edit Message
                 </button>
@@ -194,16 +189,20 @@
   </template>
 
   <template id="profile">
-    <span v-if="image=='error'">
-      Image could not be downloaded!
-    </span>
-    <img v-else :src="image" />
-
     <span v-if="editable">
+      <p> My Profile Picture: </p>
+      <span v-if="!image">
+        Image could not be downloaded!
+      </span>
+      <img v-else :src="image" id="my-profile"/>
       <form @submit.prevent="setProfilePic">
         <input type="file" accept="image/*" @change="onImageAttachment"/>
         <input type="submit" value="Set Profile Picture" :disabled="file === null"/>
       </form>
+    </span>
+    <span v-else>
+      <img v-if="image" :src="image" id="other-profile"/>
+      <i v-else class='far fa-user-circle' style='font-size:48px' id="other-profile"></i>
     </span>
   </template>
 
@@ -214,28 +213,21 @@
     # of likes:  {{ numLikes }}
   </template>
 
-  <template id="reply">
-    <form @submit.prevent="sendReply" class="sendmsg">
-      <input v-model="messageText" placeholder="Type a message..."/>
-      <input type="file" accept="image/*" @change="onImageAttachment"/>
-      <input type="submit" value="Send" :disabled="messageText.length==0"/>
-    </form>
-  
+  <template id="reply">  
    <ol v-if="replies">
       <li v-for="message of replies" :key="message.id">
         <form v-if="editID==message.id" @submit.prevent="saveEditMessage(message)">
           <input v-model="editText">
           <input type="submit" value="Save"/>
         </form>
-        <ul v-else>
+        <ul v-else class="message-contents">
+          <span class="message-from">
+            <profile :actor="message.actor"></profile>
+            <name :actor="message.actor"></name>
+            <span> [{{actordict[message.actor]}}] replied</span>
+          </span>
           <li>
-            Reply: {{message.content}}
-          </li>
-          <li>
-            From Name: <name :actor="message.actor"></name>
-          </li>
-          <li>
-            From Username: {{ actordict[message.actor] }}
+            {{message.content}}
           </li>
           <li v-if="message.attachment && message.attachment.magnet in imageDownloads">
             <span v-if="imageDownloads[message.attachment.magnet]=='downloading'">
@@ -246,16 +238,16 @@
             </span>
             <img v-else :src="imageDownloads[message.attachment.magnet]" />
           </li>
-          <summary>
-            <details>
-              <li>
-                From Actor ID: {{ message.actor }}
-              </li>
+          <summary class="summary">
+            <details class="detail">
               <li>
                 Published at Time: {{ message.published }}
               </li>
               <li>
                 Last Edited at Time: {{ message.updated }}
+              </li>
+              <li>
+                From Actor ID: {{ message.actor }}
               </li>
               <li>
                 ID: {{ message.id }}
@@ -266,19 +258,23 @@
             </details>
           </summary>
           <template v-if="message.actor==$gf.me">
-            <li>
+            <li class="message-buttons">
               <button @click="removeMessage(message)">
                 Delete Message
               </button>
-            </li>
-            <li>
               <button @click="startEditMessage(message)">
                 Edit Message
               </button>
             </li>
           </template> 
         </ul>
-        
+      </li>
+      <li>
+        <form @submit.prevent="sendReply" class="sendmsg">
+          <input v-model="messageText" placeholder="Type a reply..."/>
+          <input type="file" accept="image/*" @change="onImageAttachment"/>
+          <input type="submit" value="Send" :disabled="messageText.length==0"/>
+        </form>
       </li>
     </ol>    
   </template>

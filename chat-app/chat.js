@@ -10,10 +10,6 @@ const app = {
   // Import resolver
   created() {
     this.resolver = new Resolver(this.$gf);
-    this.$gf.events.addEventListener("connected", ()=> {
-      this.getContexts();
-      this.getUsername(this.$gf.me);
-    })
   },
 
   setup() {
@@ -40,6 +36,7 @@ const app = {
       editID: '',
       editText: '',
       recipient: '',
+      channels: [],
       //////////////////////////////
       // Problem 1 solution
       preferredUsername: '',
@@ -63,7 +60,8 @@ const app = {
   // Problem 3 solution
   watch: {
     '$gf.me': async function(me) {
-      this.getUsername(me);
+      this.myUsername = await this.resolver.actorToUsername(me);
+      this.getContexts();
     },
 
     async messages(messages) {
@@ -153,10 +151,8 @@ const app = {
   },
 
   methods: {
-
     async getUsername(me) {
-      console.log("trying")
-      this.myUsername = await this.resolver.actorToUsername(me)
+      this.myUsername = await this.resolver.actorToUsername(me);
       this.actorsToUsernames = {
         ...this.actorsToUsernames,
         [me]: this.myUsername
@@ -181,12 +177,10 @@ const app = {
       }
 
       if (this.file) {
-        console.log("message attachment")
         message.attachment = {
           type: 'Image',
           magnet: await this.$gf.media.store(this.file)
         }
-        console.log("awaited attachment")
         this.file = null
       }
 
@@ -416,12 +410,77 @@ const Read = {
           object: this.messageid,
           context: [this.messageid]
         })
-        this.readsRaw = this.$gf.useObjects([this.messageid]);
+        // this.readsRaw = this.$gf.useObjects([this.messageid]);
       }
     }
   },
 
   template: '#read'
+}
+
+const Profile = {
+  props: ['actor', 'editable'],
+
+  setup(props) {
+    const { actor } = Vue.toRefs(props)
+    const $gf = Vue.inject('graffiti')
+    return $gf.useObjects([actor])
+  },
+
+  computed: {
+    profile() {
+      const filtered= this.objects.filter(m=> m.type==="Profile" && m.icon && m.icon.type === 'Image')
+      .reduce((prev, curr)=> !prev || curr.published > prev.published? curr : prev, null);
+      return filtered;
+    }
+  },
+
+  watch: {
+    async profile(profile) {
+      console.log(profile.icon.magnet);
+      let blob;
+      try {
+        let magnet = await this.$gf.media.fetch(profile.icon.magnet);
+        blob = URL.createObjectURL(magnet)
+      } catch(e) {
+        console.log(e);
+        blob = "error"
+      }
+      console.log(blob);
+      this.image = blob;
+    }
+  },
+
+  data() {
+    return {
+      editing: false,
+      editText: '',
+      file: null,
+      image: null
+    }
+  },
+
+  methods: {
+    async setProfilePic() {
+      const message = {
+        type: 'Profile',
+        icon: {
+          type: 'Image',
+          magnet: await this.$gf.media.store(this.file)
+
+        }
+      }
+      this.file = null;
+      this.$gf.post(message);
+    },
+
+    onImageAttachment(event) {
+      const file = event.target.files[0]
+      this.file = file;
+    }
+  },
+
+  template: '#profile'
 }
 
 const Reply = {
@@ -430,7 +489,8 @@ const Reply = {
 
   components: {
     'read': Read, 
-    'name': Name
+    'name': Name,
+    'profile': Profile,
   },
 
   created() {
@@ -519,73 +579,6 @@ const Reply = {
   },
 
   template: '#reply'
-}
-
-const Profile = {
-  props: ['actor', 'editable'],
-
-  setup(props) {
-    const { actor } = Vue.toRefs(props)
-    const $gf = Vue.inject('graffiti')
-    return $gf.useObjects([actor])
-  },
-
-  computed: {
-    profile() {
-      const filtered =  this.objects
-        .filter(m=> m.type=='Profile' && m.icon && typeof m.icon.type =='image')
-        .reduce((prev, curr)=> !prev || curr.published > prev.published? curr : prev, null);
-      console.log(filtered);
-      return filtered
-    }
-  },
-
-  watch: {
-    async profile(profile) {
-      console.log(profile);
-      let blob;
-      try {
-        blob = URL.createObjectURL(await this.$gf.media.fetch(profile.icon.magnet))
-      } catch(e) {
-        blob = "error"
-      }
-      this.image = blob;
-    }
-  },
-
-  data() {
-    return {
-      editing: false,
-      editText: '',
-      file: null,
-      image: null
-    }
-  },
-
-  methods: {
-    async setProfilePic() {
-      const message = {
-        type: 'Profile',
-        icon: {
-          type: 'Image',
-          magnet: await this.magnet
-        }
-      }
-
-      console.log(message);
-      this.file = null;
-      this.magnet = null;
-      this.$gf.post(message);
-    },
-
-    async onImageAttachment(event) {
-      const file = event.target.files[0]
-      this.file = file;
-      this.magnet = await this.$gf.media.store(file);
-    }
-  },
-
-  template: '#profile'
 }
 
 app.components = { Name, Like, Read, Reply, Profile }

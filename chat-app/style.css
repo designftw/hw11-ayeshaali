@@ -1,12 +1,5 @@
-#error-message {
-    width: 40em;
-    padding: 10px;
-    border-left: solid 5px red;
-    background-color: #f5b3b3;
-}
-
 body {
-    max-width: 100%;
+    max-width: 90%;
 }
 
 #options {
@@ -27,4 +20,116 @@ li {
     display: flex;
     flex-direction: column;
     width: 15em;
+}
+
+.message-from {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.message-from * {
+    margin-right: 10px;
+}
+
+.message-contents {
+    list-style: none;
+}
+
+.message-buttons * {
+    margin-right: 10px;
+}
+
+/* Animation 1 */
+#my-heading {
+    font-size: 2.2em;
+    font-family: sans-serif;
+    color: #6f99ec;
+    animation: move-bg 0.4s linear, font-grow 0.4s linear;
+}
+
+@keyframes move-bg {
+    0% {
+        color: #4a4a4a;
+    }
+    100% {
+        color: #6f99ec;
+    }
+}
+
+@keyframes font-grow {
+    0% {
+        font-size: 2em;
+    }
+    50% {
+        font-size: 2.1em;
+    }
+    100% {
+        font-size: 2.2em;
+    }
+}
+
+/* Animation 2 */
+#my-profile {
+    border-radius: 50%;
+    width: 150px;
+    animation: growImage .4s;
+}
+
+@keyframes growImage {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Animation 3 */
+#other-profile {
+    border-radius: 50%;
+    width: 50px;
+    margin-bottom: 0;
+    transition: 0.3s;
+}
+
+#other-profile:hover {
+    width: 100px;
+}
+
+/* Animation 4 */
+button {
+    transform: scale(1);
+    transition: 0.3s;
+    margin-left: 5px;
+}
+
+button:hover:enabled {
+    transform: scale(1.25);
+}
+
+/* Animation 5 */
+#error-message {
+    width: 40em;
+    padding: 10px;
+    border-left: solid 5px #ff0000;
+    background-color: #f5b3b3;
+}
+
+#success-message {
+    width: 40em;
+    padding: 10px;
+    animation-name: tosuccess;
+    animation-duration: 0.3s;
+    border-left: solid 5px #00ff59;
+    background-color: #baf0b7;
+}
+
+/* The animation code */
+@keyframes tosuccess {
+    0%   {background-color:#f5b3b3; border-left: solid 5px #ff0000;}
+    20%  {background-color:#E6C2B4; border-left: solid 5px #BF4016;}
+    40%  {background-color:#D8D2B5; border-left: solid 5px #80802D;}
+    60%  {background-color:#C9E1B6; border-left: solid 5px #40BF43;}
+    80% {background-color: #baf0b7; border-left: solid 5px #00FF59;}
 }
