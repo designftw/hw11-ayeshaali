@@ -421,6 +421,10 @@ const Read = {
 const Profile = {
   props: ['actor', 'editable'],
 
+  created() {
+    this.resolver = new Resolver(this.$gf);
+  },
+
   setup(props) {
     const { actor } = Vue.toRefs(props)
     const $gf = Vue.inject('graffiti')
@@ -437,6 +441,7 @@ const Profile = {
 
   watch: {
     async profile(profile) {
+      console.log(await this.resolver.actorToUsername(this.actor))
       console.log(profile.icon.magnet);
       let blob;
       try {
@@ -467,7 +472,6 @@ const Profile = {
         icon: {
           type: 'Image',
           magnet: await this.$gf.media.store(this.file)
-
         }
       }
       this.file = null;

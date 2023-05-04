@@ -91,10 +91,23 @@ li {
     width: 50px;
     margin-bottom: 0;
     transition: 0.3s;
+    aspect-ratio: 1/1;
 }
 
 #other-profile:hover {
     width: 100px;
+}
+
+#other-profile-unknown {
+    border-radius: 50%;
+    font-size: 48px;
+    margin-bottom: 0;
+    transition: 0.3s;
+    aspect-ratio: 1/1;
+}
+
+#other-profile-unknown:hover {
+    font-size: 96px;
 }
 
 /* Animation 4 */
