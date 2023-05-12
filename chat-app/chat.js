@@ -13,20 +13,13 @@ const app = {
   },
 
   setup() {
-    // Initialize the name of the channel we're chatting in
     const channel = Vue.ref('default')
-
-    // And a flag for whether or not we're private-messaging
-    const privateMessaging = Vue.ref(false)
-
-    // If we're private messaging use "me" as the channel,
-    // otherwise use the channel value
+    const group = Vue.ref("Muslim Students' Association")
     const $gf = Vue.inject('graffiti')
-    const context = Vue.computed(()=> privateMessaging.value? [$gf.me] : [channel.value])
-
-    // Initialize the collection of messages associated with the context
-    const { objects: messagesRaw } = $gf.useObjects(context)
-    return { channel, privateMessaging, messagesRaw }
+    const context = Vue.computed(() => group.value);
+    const { objects: messagesRaw } = $gf.useObjects([context])
+    const { objects: groupsRaw } = $gf.useObjects(["appgroups"])
+    return { group, channel, messagesRaw, groupsRaw }
   },
 
   data() {
@@ -36,7 +29,6 @@ const app = {
       editID: '',
       editText: '',
       recipient: '',
-      channels: [],
       //////////////////////////////
       // Problem 1 solution
       preferredUsername: '',
@@ -52,7 +44,16 @@ const app = {
       myUsername: '',
       actorsToUsernames: {},
       /////////////////////////////
-      imageDownloads: {}
+      imageDownloads: {},
+      /////////////////////////////
+      channelToAdd: "",
+      groupToAdd: "",
+      tab: "Chats",
+      /////////////////////////////
+      eventName: "",
+      eventDesc: "",
+      eventStart: "",
+      eventEnd: ""
     }
   },
 
@@ -61,7 +62,6 @@ const app = {
   watch: {
     '$gf.me': async function(me) {
       this.myUsername = await this.resolver.actorToUsername(me);
-      this.getContexts();
     },
 
     async messages(messages) {
@@ -104,8 +104,33 @@ const app = {
   /////////////////////////////
 
   computed: {
+    groups() {
+      let groups = this.groupsRaw.filter(m=> m.type=='Organization')
+      groups = [...new Set(groups.map(element => element.name))]
+      return groups
+    },
+
+    channels() {
+      let channels = this.messagesRaw.filter(m=> m.type=='Group');
+      channels = [...new Set(channels.map(element => element.name))]
+      return channels
+    },
+
     messages() {
-      let messages = this.messagesRaw
+      let messages = this.messagesRaw.filter(m=>
+          m.type && m.type=='Note' && (m.content || m.content == '') && typeof m.content=='string' && m.channel == this.channel)
+      return messages.sort((m1, m2)=> new Date(m2.published) - new Date(m1.published)).slice(0,50)
+    },
+
+    messagesWithAttachments() {
+      return this.messages.filter(m=>
+        m.attachment &&
+        m.attachment.type == 'Image' &&
+        typeof m.attachment.magnet == 'string')
+    },
+
+    events() {
+      let events = this.messagesRaw
         // Filter the "raw" messages for data
         // that is appropriate for our application
         // https://www.w3.org/TR/activitystreams-vocabulary/#dfn-note
@@ -113,26 +138,11 @@ const app = {
           // Does the message have a type property?
           m.type         &&
           // Is the value of that property 'Note'?
-          m.type=='Note' &&
+          m.type=='Event' &&
           // Does the message have a content property?
           (m.content || m.content == '') &&
           // Is that property a string?
           typeof m.content=='string')
-
-      // Do some more filtering for private messaging
-      if (this.privateMessaging) {
-        messages = messages.filter(m=>
-          // Is the message private?
-          m.bto &&
-          // Is the message to exactly one person?
-          m.bto.length == 1 &&
-          (
-            // Is the message to the recipient?
-            m.bto[0] == this.recipient ||
-            // Or is the message from the recipient?
-            m.actor == this.recipient
-          ))
-      }
 
       return messages
         // Sort the messages with the
@@ -141,13 +151,6 @@ const app = {
         // Only show the 10 most recent ones
         .slice(0,50)
     },
-
-    messagesWithAttachments() {
-      return this.messages.filter(m=>
-        m.attachment &&
-        m.attachment.type == 'Image' &&
-        typeof m.attachment.magnet == 'string')
-    }
   },
 
   methods: {
@@ -159,21 +162,12 @@ const app = {
       }
     },
 
-    async getContexts() {
-      this.contexts = await this.$gf.myContexts();
-      const arr = []
-      for (const ctxt of this.contexts) {
-        if (ctxt.match(/graffitiactor:\/\/[0-9a-f]{64}$/) === null && ctxt.includes("graffitiobject") === false) {
-          arr.push(ctxt)
-        }
-      }
-      this.channels = arr;
-    },
-
     async sendMessage() {
       const message = {
         type: 'Note',
         content: this.messageText,
+        channel: this.channel,
+        context: [this.group]
       }
 
       if (this.file) {
@@ -183,24 +177,8 @@ const app = {
         }
         this.file = null
       }
-
-      // The context field declares which
-      // channel(s) the object is posted in
-      // You can post in more than one if you want!
-      // The bto field makes messages private
-      if (this.privateMessaging) {
-        message.bto = [this.recipient]
-        message.context = [this.$gf.me, this.recipient]
-      } else {
-        message.context = [this.channel]
-      }
-
-      // Send!
-      if ((this.privateMessaging && this.recipient.match(/graffitiactor:\/\/[0-9a-f]{64}$/)) || !this.privateMessaging) {
-        this.$gf.post(message);
-        this.messageText = ''
-        this.getContexts();
-      }
+      this.$gf.post(message);
+      this.messageText = '';
     },
 
     removeMessage(message) {
@@ -235,16 +213,55 @@ const app = {
     /////////////////////////////
 
     /////////////////////////////
-    // Problem 2 solution
-    async chatWithUser() {
-      this.recipient = await this.resolver.usernameToActor(this.recipientUsernameSearch)
-      this.recipientUsername = this.recipientUsernameSearch
-    },
-    /////////////////////////////
 
     onImageAttachment(event) {
       const file = event.target.files[0]
       this.file = file
+    },
+
+    addGroup() {
+      const group = {
+        type: 'Organization',
+        name: this.groupToAdd,
+        context: ["appgroups"]
+      }
+      this.$gf.post(group);
+      this.group = this.groupToAdd;
+      this.groupToAdd = "";
+    },
+
+    addChannel() {
+      const channel = {
+        type: 'Group',
+        name: this.channelToAdd,
+        context: [this.group]
+      }
+      this.$gf.post(channel);
+      this.channel = this.channelToAdd;
+      this.channelToAdd = "";
+    },
+
+    /////////////////////////////
+    // Events
+
+    setTab(tab) {
+      this.tab = tab;
+    },
+
+    async createEvent() {
+      const event = {
+        type: 'Event',
+        name: this.eventName,
+        desc: this.eventDesc,
+        startTime: this.eventStart,
+        endTime: this.eventEnd,
+        context: [this.group]
+      }
+      this.$gf.post(event);
+      this.eventName="";
+      this.eventDesc="";
+      this.eventStart="";
+      this.eventEnd ="";
     }
   }
 }
@@ -261,19 +278,7 @@ const Name = {
 
   computed: {
     profile() {
-      return this.objects
-        // Filter the raw objects for profile data
-        // https://www.w3.org/TR/activitystreams-vocabulary/#dfn-profile
-        .filter(m=>
-          // Does the message have a type property?
-          m.type &&
-          // Is the value of that property 'Profile'?
-          m.type=='Profile' &&
-          // Does the message have a name property?
-          m.name &&
-          // Is that property a string?
-          typeof m.name=='string')
-        // Choose the most recent one or null if none exists
+      return this.objects.filter(m=> m.type && m.type=='Profile' && m.name && typeof m.name=='string')
         .reduce((prev, curr)=> !prev || curr.published > prev.published? curr : prev, null)
     }
   },
@@ -441,17 +446,13 @@ const Profile = {
 
   watch: {
     async profile(profile) {
-      console.log(await this.resolver.actorToUsername(this.actor))
-      console.log(profile.icon.magnet);
       let blob;
       try {
         let magnet = await this.$gf.media.fetch(profile.icon.magnet);
         blob = URL.createObjectURL(magnet)
       } catch(e) {
-        console.log(e);
-        blob = "error"
+        blob = null
       }
-      console.log(blob);
       this.image = blob;
     }
   },

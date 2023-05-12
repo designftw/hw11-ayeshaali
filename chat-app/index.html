@@ -2,6 +2,7 @@
 <html>
 <head>
   <script type="module" src="./chat.js"></script>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
   <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" />
   <link rel="stylesheet" href="style.css">
   <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
@@ -28,142 +29,155 @@
     <template v-if="$gf.me">
 
       <!-- Begin Problem 1 Solution -->
-      <p>
-        <form @submit.prevent="setUsername">
-          <input v-model="preferredUsername" placeholder="Choose a username..."/>
-          <button type="submit" value="Set Username">Set Username</button>
-        </form>
-        <p id="result" class="transform">{{ usernameResult }}</p>
-      </p>
-      <!-- End Problem 1 Solution -->
+      <div id="userDetails">
+        <h3>My Info</h3>
+        <p>
+          <form @submit.prevent="setUsername">
+            <input v-model="preferredUsername" placeholder="Choose a username..."/>
+            <button type="submit" value="Set Username">Set Username</button>
+          </form>
+          <p id="result" class="transform">{{ usernameResult }}</p>
+        </p>
+        <!-- End Problem 1 Solution -->
+  
+        <p>
+          My Name: <name :actor="$gf.me" :editable="true"></name>
+        </p>
+        <profile :actor="$gf.me" :editable="true"></profile>  
+      </div>
 
-      <p>
-        My Name: <name :actor="$gf.me" :editable="true"></name>
-      </p>
-      <profile :actor="$gf.me" :editable="true"></profile>
-
-      <p id="options">
-        Change chat format:
-        <input type="radio" id="channel" :value="false" v-model="privateMessaging" />
-        <label for="channel">Channel-based public chat</label>
-
-        <input type="radio" id="pm" :value="true" v-model="privateMessaging" />
-        <label for="pm">Private Messaging</label>
-      </p>
-
-      <p v-if="!privateMessaging" class = "recipient-container">
-        <label for="channel">
-          Change the channel you're chatting in:
+      <h3>{{group}}</h3>
+      <p class= "group-form">
+        <label for="group">
+          Change the organization you're in:
         </label>
-        <input list="contextlist" id="channel" v-model="channel" @click="channel = ''"/>
-        <datalist id="contextlist">
-          <option v-for="context of channels">{{context}}</option>
-        </datalist>
+        <select v-model="group">
+          <option v-for="g of groups">{{g}}</option>
+        </select>
+        <label for="groupToAdd">
+          Create a new group
+        </label>
+        <input id="group" v-model="groupToAdd"/>
+        <button @click="addGroup">Add Group</button>
       </p>
-      <!-- Begin problem 2 solution -->
-      <div v-else class = "recipient-container">
-        <form @submit.prevent="chatWithUser">
-          <label for="recipient">
-            Type the user ID of who you'd like to chat with:
+
+      <div id="tabOptions" class="w3-bar w3-blue-gray">
+        <button class="w3-bar-item w3-button" @click="setTab('Chats')" :class="tab=='Chats' ? 'checked' : '.notchecked' ">Chats</button>
+        <button class="w3-bar-item w3-button" @click="setTab('Events')" :class="tab=='Events' ? 'checked' : '.notchecked' ">Events</button>
+      </div>
+
+      <div v-if="tab=='Chats'">
+        <p class= "recipient-container">
+          <label for="channel">
+            Change the channel you're chatting in:
           </label>
-          <input id="recipient" v-model="recipientUsernameSearch"/>
-          <input type="submit" value="Search"/>
-          <p v-if="recipient" id="success-message" >Chatting with {{ recipientUsername }}</p>
-          <p v-else id="error-message"> Username "{{ recipientUsername }}" does not exist! </p>
+          <select v-model="channel">
+            <option v-for="context of channels">{{context}}</option>
+          </select>
+          <label for="channelToAdd">
+            Create a new channel
+          </label>
+          <input id="channel" v-model="channelToAdd"/>
+          <button @click="addChannel">Add Channel</button>
+        </p>
+        <hr>
+
+        <!-- A form for sending messages -->
+        <form @submit.prevent="sendMessage" class="sendmsg">
+          <input v-model="messageText" placeholder="Type a message..."/>
+          <input type="file" accept="image/*" @change="onImageAttachment"/>
+          <button type="submit" value="Send" :disabled="channel.length == 0 | messageText.length==0">
+            Send
+          </button>
+        </form>
+        <ol>
+          <!-- List all the messages -->
+          <li v-for="message of messages" :key="message.id">
+  
+            <!-- Display and edit form if we're editing a message -->
+            <form v-if="editID==message.id" @submit.prevent="saveEditMessage(message)">
+              <input v-model="editText">
+              <input type="submit" value="Save"/>
+            </form>
+  
+            <!-- Otherwise, display a bunch of properties from the message -->
+            <ul v-else class="message-contents">
+              <span class="message-from">
+                <profile :actor="message.actor"></profile>
+                <name :actor="message.actor"></name>
+                <span> [{{actorsToUsernames[message.actor]}}] sent</span>
+              </span>
+              <li>
+                {{ message.content }} 
+              </li>
+              <li v-if="message.attachment && message.attachment.magnet in imageDownloads">
+                <span v-if="imageDownloads[message.attachment.magnet]=='downloading'">
+                  Image is downloading...
+                </span>
+                <span v-else-if="imageDownloads[message.attachment.magnet]=='error'">
+                  Image could not be downloaded!
+                </span>
+                <img v-else :src="imageDownloads[message.attachment.magnet]" />
+              </li>
+              <summary class="summary">
+                <details class="detail">
+                  <li>
+                    Published at Time: {{ message.published }}
+                  </li>
+                  <li>
+                    Last Edited at Time: {{ message.updated }}
+                  </li>
+                  <li>
+                    From Actor ID: {{ message.actor }}
+                  </li>
+                  <li>
+                    ID: {{ message.id }}
+                  </li>
+                  <li>
+                    <read :messageid="message.id" :actordict="actorsToUsernames"></read>
+                  </li>
+                </details>
+              </summary>
+  
+              <template v-if="message.actor==$gf.me">
+                <li class="message-buttons">
+                  <button @click="removeMessage(message)">
+                    Delete Message
+                  </button>
+                  <button @click="startEditMessage(message)">
+                    Edit Message
+                  </button>
+                </li>
+              </template>
+  
+              <li>
+                <like :messageid="message.id"></like>
+              </li>
+              <li>
+                <reply :messageid="message.id" :actordict="actorsToUsernames"></reply>
+              </li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+
+      <div v-else>
+        <!-- A form for creating events -->
+        <form @submit.prevent="createEvent" class="sendevent">
+          <h3>Create a New Event</h3>
+          <label for="eventName">Event Name:</label>
+          <input name="eventName" v-model="eventName"/>
+          <label for="eventDesc">Event Description:</label>
+          <input name="eventDesc" v-model="eventDesc"/>
+          <label for="eventStart">Event Start:</label>
+          <input type="datetime-local" id="start" name="eventStart" v-model="eventStart">
+          <label for="eventEnd">Event Start:</label>
+          <input type="datetime-local" id="end" name="eventEnd" v-model="eventEnd">
+          <button type="submit" value="Send">
+            Create
+          </button>
         </form>
       </div>
-      <!-- End problem 2 solution -->
-
-      <!-- A form for sending messages -->
-      <form @submit.prevent="sendMessage" class="sendmsg">
-        <input v-model="messageText" placeholder="Type a message..."/>
-        <input type="file" accept="image/*" @change="onImageAttachment"/>
-        <button type="submit" value="Send" :disabled="(privateMessaging && !recipient) | (!privateMessaging && channel.length == 0) | messageText.length==0">
-          Send
-        </button>
-      </form>
-      <ol>
-        <!-- List all the messages -->
-        <li v-for="message of messages" :key="message.id">
-
-          <!-- Display and edit form if we're editing a message -->
-          <form v-if="editID==message.id" @submit.prevent="saveEditMessage(message)">
-            <input v-model="editText">
-            <input type="submit" value="Save"/>
-          </form>
-
-          <!-- Otherwise, display a bunch of properties from the message -->
-          <ul v-else class="message-contents">
-            <span class="message-from">
-              <profile :actor="message.actor"></profile>
-              <name :actor="message.actor"></name>
-              <span> [{{actorsToUsernames[message.actor]}}] sent</span>
-            </span>
-            <li>
-              {{ message.content }} 
-            </li>
-            <template v-if="privateMessaging">
-              <li>
-                To Name: <name :actor="message.bto[0]"></name>
-              </li>
-              <li>
-                To Username: {{ actorsToUsernames[message.bto[0]] }}
-              </li>
-            </template>
-            <li v-if="message.attachment && message.attachment.magnet in imageDownloads">
-              <span v-if="imageDownloads[message.attachment.magnet]=='downloading'">
-                Image is downloading...
-              </span>
-              <span v-else-if="imageDownloads[message.attachment.magnet]=='error'">
-                Image could not be downloaded!
-              </span>
-              <img v-else :src="imageDownloads[message.attachment.magnet]" />
-            </li>
-            <summary class="summary">
-              <details class="detail">
-                <li>
-                  Published at Time: {{ message.published }}
-                </li>
-                <li>
-                  Last Edited at Time: {{ message.updated }}
-                </li>
-                <li>
-                  From Actor ID: {{ message.actor }}
-                </li>
-                <template v-if="privateMessaging">
-                  <li>
-                    To Actor ID: {{ message.bto[0] }}
-                  </li>
-                </template>
-                <li>
-                  ID: {{ message.id }}
-                </li>
-                <li>
-                  <read :messageid="message.id" :actordict="actorsToUsernames"></read>
-                </li>
-              </details>
-            </summary>
-
-            <template v-if="message.actor==$gf.me">
-              <li class="message-buttons">
-                <button @click="removeMessage(message)">
-                  Delete Message
-                </button>
-                <button @click="startEditMessage(message)">
-                  Edit Message
-                </button>
-              </li>
-            </template>
-
-            <li>
-              <like :messageid="message.id"></like>
-            </li>
-            <li>
-              <reply :messageid="message.id" :actordict="actorsToUsernames"></reply>
-            </li>
-          </ul>
-        </li>
-      </ol>
     </template>
   </div>
 
