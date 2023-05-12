@@ -334,8 +334,8 @@
   </template>
 
   <template id="rsvp">
-    <label for="answer">RSVP: </label>
-    <select name="answer" v-model="answer" @change="sendRSVP">
+    <h4><label for="answer">RSVP: </label></h4>
+    <select name="answer" v-model="answer" @change="sendRSVP" :class="answer">
       <option>Yes</option>
       <option>No</option>
       <option>Maybe</option>
