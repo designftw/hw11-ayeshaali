@@ -164,3 +164,15 @@ button:hover:enabled {
     background-color: #ccc;
     color: black;
 }
+
+.Yes {
+    color: green;
+}
+
+.No {
+    color: red;
+}
+
+.Maybe {
+    color: blue;
+}
