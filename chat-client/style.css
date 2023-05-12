@@ -73,6 +73,7 @@ li {
     border-radius: 50%;
     width: 150px;
     animation: growImage .4s;
+    aspect-ratio: 1 / 1;
 }
 
 @keyframes growImage {
