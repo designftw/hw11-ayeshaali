@@ -173,10 +173,46 @@
           <input type="datetime-local" id="start" name="eventStart" v-model="eventStart">
           <label for="eventEnd">Event Start:</label>
           <input type="datetime-local" id="end" name="eventEnd" v-model="eventEnd">
+          <label for="location">Location:</label>
+          <input id="location" name="location" v-model="eventLocation">
           <button type="submit" value="Send">
             Create
           </button>
         </form>
+        <hr>
+        <section id="events">
+          <div v-for="event of events">
+            <form v-if="editID==event.id" @submit.prevent="saveEditEvent(event)">
+              <label for="eventName">Event Name:</label>
+              <input name="eventName" v-model="editEvent.name"/>
+              <label for="eventDesc">Event Description:</label>
+              <input name="eventDesc" v-model="editEvent.desc"/>
+              <label for="eventStart">Event Start:</label>
+              <input type="datetime-local" id="start" name="eventStart" v-model="editEvent.startTime">
+              <label for="eventEnd">Event Start:</label>
+              <input type="datetime-local" id="end" name="eventEnd" v-model="editEvent.endTime">
+              <label for="location">Location:</label>
+              <input id="location" name="location" v-model="editEvent.location">
+              <button type="submit" value="Save"> Save </button>
+            </form>
+
+            <div v-else class="event-contents">
+              <h4> {{ event.name }} </h4>
+              <p> {{ event.desc }} </p>
+              <p>Start Time: <input type="datetime-local" id="end" name="eventEnd" v-model="event.startTime" readonly></p>
+              <p>End Time: <input type="datetime-local" id="end" name="eventEnd" v-model="event.endTime" readonly></p>
+              <p> Location: {{ event.location }} </p>
+
+              <template v-if="event.actor==$gf.me">
+                <div class="message-buttons">
+                  <button @click="removeMessage(event)"> Delete Event </button>
+                  <button @click="startEditEvent(event)"> Edit Event </button>
+                </div>
+              </template>
+              <rsvp :event="event.id" :actordict="actorsToUsernames"></rsvp>
+            </div>
+          </div>
+        </section>
       </div>
     </template>
   </div>
@@ -295,6 +331,16 @@
   
   <template id="read">
     Read By: {{ readsUsername.join(', ') }}
+  </template>
+
+  <template id="rsvp">
+    <label for="answer">RSVP: </label>
+    <select name="answer" v-model="answer" @change="sendRSVP">
+      <option>Yes</option>
+      <option>No</option>
+      <option>Maybe</option>
+    </select>
+    <p>RSVPed Yes: {{ rsvpsUsername.join(', ') }}</p>
   </template>
 </body>
 </html>

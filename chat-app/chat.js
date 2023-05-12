@@ -53,7 +53,15 @@ const app = {
       eventName: "",
       eventDesc: "",
       eventStart: "",
-      eventEnd: ""
+      eventEnd: "",
+      eventLocation: "",
+      editEvent: {
+        name: "",
+        desc: "",
+        startTime: "",
+        endTime: "",
+        location: ""
+      },
     }
   },
 
@@ -130,25 +138,9 @@ const app = {
     },
 
     events() {
-      let events = this.messagesRaw
-        // Filter the "raw" messages for data
-        // that is appropriate for our application
-        // https://www.w3.org/TR/activitystreams-vocabulary/#dfn-note
-        .filter(m=>
-          // Does the message have a type property?
-          m.type         &&
-          // Is the value of that property 'Note'?
-          m.type=='Event' &&
-          // Does the message have a content property?
-          (m.content || m.content == '') &&
-          // Is that property a string?
-          typeof m.content=='string')
-
-      return messages
-        // Sort the messages with the
-        // most recently created ones first
-        .sort((m1, m2)=> new Date(m2.published) - new Date(m1.published))
-        // Only show the 10 most recent ones
+      let events = this.messagesRaw.filter(m=> m.type=='Event');
+      return events
+        .sort((m1, m2)=> new Date(m1.endTime) - new Date(m2.endTime))
         .slice(0,50)
     },
   },
@@ -241,9 +233,6 @@ const app = {
       this.channelToAdd = "";
     },
 
-    /////////////////////////////
-    // Events
-
     setTab(tab) {
       this.tab = tab;
     },
@@ -255,14 +244,38 @@ const app = {
         desc: this.eventDesc,
         startTime: this.eventStart,
         endTime: this.eventEnd,
+        location: this.eventLocation,
         context: [this.group]
       }
+      console.log(event);
       this.$gf.post(event);
       this.eventName="";
       this.eventDesc="";
       this.eventStart="";
       this.eventEnd ="";
-    }
+      this.eventLocation = "";
+    },
+
+    startEditEvent(event) {
+      this.editID= event.id
+      // And copy over it's existing text
+      this.editEvent = {
+        name: event.name,
+        desc: event.desc,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        location: event.location
+      }
+    },
+
+    saveEditEvent(event) {
+      event.name = this.editEvent.name
+      event.desc = this.editEvent.desc
+      event.startTime = this.editEvent.startTime
+      event.endTime = this.editEvent.endTime
+      event.location = this.editEvent.location
+      this.editID = ''
+    },
   }
 }
 
@@ -415,7 +428,6 @@ const Read = {
           object: this.messageid,
           context: [this.messageid]
         })
-        // this.readsRaw = this.$gf.useObjects([this.messageid]);
       }
     }
   },
@@ -586,7 +598,74 @@ const Reply = {
   template: '#reply'
 }
 
-app.components = { Name, Like, Read, Reply, Profile }
+const Rsvp = {
+  props: ["event", "actordict"],
+
+  setup(props) {
+    const $gf = Vue.inject('graffiti')
+    const eventID = Vue.toRef(props, 'event')
+    const actordict = Vue.toRef(props, 'actordict')
+    const { objects: rsvpsRaw } = $gf.useObjects([eventID])
+    return { rsvpsRaw, eventID, actordict }
+  },
+
+  watch: {
+    actordict: function(newVal){
+      this.refreshKey +=1;
+    },
+
+    myRSVP: function(newVal) {
+      this.answer = newVal[0] ? newVal[0].answer : ""
+    }
+  },
+
+  data() {
+    return {
+      answer: ""
+    }
+  },
+
+  computed: {
+    rsvps() {
+      return this.rsvpsRaw.filter(l=> l.type == 'RSVP' && l.object == this.eventID)
+    },
+
+    rsvpsActor() {
+      return [...new Set(this.rsvps.filter(l => l.answer == "Yes").map(l=>l.actor))]
+    },
+
+    rsvpsUsername() {
+      return this.rsvpsActor.map(a=> this.actordict && this.actordict[a] ? this.actordict[a] : a)
+    },
+
+    myRSVP() {
+      return this.rsvps.filter(l=> l.actor == this.$gf.me)
+    }
+  },
+
+  methods: {
+    sendRSVP() {
+      console.log(this.myRSVP)
+      if (this.myRSVP.length == 0) {
+        const rsvp = {
+          type: 'RSVP',
+          answer: this.answer,
+          object: this.eventID,
+          context: [this.eventID]
+        }
+        console.log(rsvp)
+        this.$gf.post(rsvp)
+      } else {
+        const rsvp = this.myRSVP[0];
+        rsvp.answer = this.answer
+      }
+    }
+  },
+
+  template: '#rsvp'
+}
+
+app.components = { Name, Like, Read, Reply, Profile, Rsvp }
 Vue.createApp(app)
    .use(GraffitiPlugin(Vue))
    .mount('#app')
