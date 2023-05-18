@@ -78,6 +78,23 @@
             <input id="channel" v-model="channelToAdd"/>
             <button @click="addChannel">Add Channel</button>
           </p>
+          <template v-if="amAdmin">
+            <hr>
+            <p><strong>You are an admin of the {{group}}!</strong></p>
+            <p>This means you can create events for the organization and give other users admin access! </p>
+            <form @submit.prevent="giveAdminAccess">
+              <label for="recipient">
+                Type the user ID of who you'd like to give admin access to:
+              </label>
+              <input id="recipient" v-model="recipientUsernameSearch"/>
+              <input type="submit" value="Search"/>
+            </form>
+            <p v-if="searchFeedback.length > 0">{{searchFeedback}}</p>
+            <span>All Admin</span>
+            <ul>
+              <li v-for="admin of adminIDs">{{actorsToUsernames[admin]}}</li>
+            </ul>
+          </template>
         </div>
         
         <div id="rest">
@@ -149,7 +166,13 @@
           </div>
     
           <div v-else id="eventsTab">
-            <events :group="group" :actorstousernames="actorsToUsernames" :channels="channels"></events>
+            <events :group="group" 
+                    :actorstousernames="actorsToUsernames" 
+                    :channels="channels"
+                    :myusername="myUsername"
+                    :amadmin="amAdmin"
+                    :adminids="adminIDs">
+            </events>
           </div>
         </div>
       </div>    
@@ -268,7 +291,7 @@
   </template>
 
   <template id="events">
-    <details open>
+    <details v-if="amAdmin" open>
       <summary><h3>Create a New Event</h3></summary>
       <form @submit.prevent="createEvent" id="event-form">
         <label for="eventName">Event Name:</label>
@@ -288,6 +311,11 @@
         <button type="submit" value="Send"> Create Event </button>
       </form>
     </details>
+    <div v-else>
+      <h3>Create a New Event</h3>
+      <p>To create an event, you must first be granted admin access</p>
+      <button @click="requestAdminAccess()">Request Admin Access</button>
+    </div>
     <hr>
     <div id="events-options">
       <select id="filter" v-model="filterBy">
@@ -330,7 +358,7 @@
                 new Date(event.startTime).toLocaleString() + "-" + new Date(event.endTime).toLocaleString()
               }}
             </p>
-            <template v-if="event.actor==$gf.me" >
+            <template v-if="adminids.includes($gf.me)" >
               <div class="message-buttons">
                 <button @click="removeEvent(event)"> Delete Event </button>
                 <button @click="startEditEvent(event)"> Edit Event </button>

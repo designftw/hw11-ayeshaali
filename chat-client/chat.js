@@ -29,6 +29,8 @@ const app = {
       editID: '',
       editText: '',
       recipient: '',
+      recipientUsernameSearch: '',
+      searchFeedback: '',
       //////////////////////////////
       // Problem 1 solution
       preferredUsername: '',
@@ -101,6 +103,19 @@ const app = {
       if (oldChannels.length === 0 && newChannels.length !== 0) {
         this.channel = newChannels[0]
       }
+    },
+
+    async admins(admins) {
+      for (const a of admins) {
+        if (!this.actorsToUsernames[a.actor]) {
+          const actor = a.actor;
+          const username = await this.resolver.actorToUsername(a.actor)
+          this.actorsToUsernames = {
+            ...this.actorsToUsernames,
+            [actor]: username
+          }
+        } 
+      }
     }
   },
 
@@ -115,6 +130,27 @@ const app = {
       let channels = this.messagesRaw.filter(m=> m.type=='Group');
       channels = [...new Set(channels.map(element => element.name))]
       return channels
+    },
+
+    admins() {
+      let admins = this.messagesRaw.filter(m=> m.type=='Admin');
+      return admins;
+    },
+
+    adminIDs() {
+      let adminIDs = [...new Set(this.admins.map(element => element.name))]
+      adminIDs.push(this.groupAdmin)
+      return adminIDs
+    },
+
+    groupAdmin() {
+      let groups = this.groupsRaw.filter(m=> m.type=='Organization' && m.name==this.group)
+      groups = [...new Set(groups.map(element => element.actor))]
+      return groups[0]
+    },
+
+    amAdmin() {
+      return this.adminIDs.includes(this.$gf.me)
     },
 
     messages() {
@@ -223,6 +259,25 @@ const app = {
 
     setTab(tab) {
       this.tab = tab;
+    },
+
+    async giveAdminAccess() {
+      const recipient = await this.resolver.usernameToActor(this.recipientUsernameSearch)
+      console.log(recipient)
+      if (recipient) {
+        const admin = {
+          type: 'Admin',
+          name: recipient,
+          username: this.recipientUsernameSearch,
+          context: [this.group]
+        }
+        this.$gf.post(admin);
+        this.searchFeedback = "";
+        this.recipientUsernameSearch = "";
+        this.searchFeedback = "Successful!"
+      } else {
+        this.searchFeedback = "Username" + this.recipientUsernameSearch + "does not exist!"
+      }
     },
   }
 }
@@ -614,18 +669,25 @@ const Rsvp = {
 }
 
 const Events = {
-  props: ["group", "actorstousernames", "channels"],
+  props: ["group", "actorstousernames", "channels", "myusername", "amadmin", "adminids"],
 
   components: {
     'rsvp': Rsvp, 
+  },
+
+  created() {
+    this.resolver = new Resolver(this.$gf);
   },
 
   setup(props) {
     const $gf = Vue.inject('graffiti')
     const group = Vue.toRef(props, 'group')
     const channels = Vue.toRef(props, 'channels')
+    const myUsername = Vue.toRef(props, 'myusername')
+    const amAdmin = Vue.toRef(props, 'amadmin')
+    const adminIDs = Vue.toRef(props, 'adminids')
     const {objects: messagesRaw} = $gf.useObjects([group])
-    return { group, messagesRaw, channels }
+    return { group, messagesRaw, channels, myUsername, amAdmin }
   },
 
   data() {
@@ -727,6 +789,16 @@ const Events = {
     removeEvent(event) {
       this.$gf.remove(event)
     },
+
+    async requestAdminAccess() {
+      const admin = {
+        type: 'Admin',
+        name: this.$gf.me,
+        username: this.myUsername,
+        context: [this.group]
+      }
+      this.$gf.post(admin);
+    }
   },
 
   template: '#events'
