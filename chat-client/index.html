@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" />
   <link rel="stylesheet" href="style.css">
   <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
 </head>
 
 <body>
@@ -121,6 +122,7 @@
                       </span>
                       <img v-else :src="imageDownloads[message.attachment.magnet]" />
                     </li>
+                    <like :messageid="message.id"></like>
                     <read :messageid="message.id" :actordict="actorsToUsernames"></read>
                     <template v-if="message.actor==$gf.me">
                       <li class="message-buttons">
@@ -133,11 +135,12 @@
                       </li>
                     </template>
         
-                    <li>
-                      <like :messageid="message.id"></like>
-                    </li>
-                    <li>
+                    <details>
+                      <summary>
+                        Replies
+                      </summary>
                       <reply :messageid="message.id" :actordict="actorsToUsernames"></reply>
+                    </details>
                     </li>
                   </ul>
                 </li>
@@ -186,10 +189,12 @@
   </template>
 
   <template id="like">
-    <button @click="toggleLike">
-      {{ myLikes.length? 'Unlike' : 'Like' }}
-    </button>
-    # of likes:  {{ numLikes }}
+    <div class='heart-wrapper'>
+      <ion-icon name="heart" @click="toggleLike" :class="myLikes.length ? 'active' : ''">
+        <div class='red-bg'></div>
+      </ion-icon>
+      <span>{{ numLikes }}</span>
+    </div>
   </template>
 
   <template id="reply">  
@@ -245,7 +250,7 @@
   
   <template id="read">
     <details class="detail">
-      <summary class="summary"> Read By: </summary>
+      <summary class="summary"> Read By </summary>
       {{ readsUsername.join(', ') }}
     </details>      
   </template>

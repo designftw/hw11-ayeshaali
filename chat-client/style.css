@@ -3,11 +3,6 @@ body {
     padding: 10px;
 }
 
-#chatOptions {
-    display: flex;
-    flex-direction: row;
-}
-
 .recipient-container {
     display: block;
 }
@@ -162,6 +157,38 @@ li {
     40%  {background-color:#D8D2B5; border-left: solid 5px #80802D;}
     60%  {background-color:#C9E1B6; border-left: solid 5px #40BF43;}
     80% {background-color: #baf0b7; border-left: solid 5px #00FF59;}
+}
+
+/* Like Animation */
+.heart-wrapper > span {
+    font-size:20px;
+}
+
+.heart-wrapper {
+    font-size:x-large;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+ion-icon.active{
+animation:like 0.5s 1;
+fill:#db3f8a;
+stroke:none;
+}
+
+ion-icon{
+fill:transparent;
+stroke:black;
+stroke-width:30;
+transition:all 0.5s;
+visibility: visible;
+}
+
+@keyframes like {
+0%   { transform: scale(1); }
+90%   { transform: scale(1.2); }
+100% { transform: scale(1.1); }
 }
 
 /* HW12 Events */
