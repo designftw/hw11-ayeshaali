@@ -13,7 +13,7 @@ const app = {
   },
 
   setup() {
-    const channel = Vue.ref('default')
+    const channel = Vue.ref('')
     const group = Vue.ref("Muslim Students' Association")
     const $gf = Vue.inject('graffiti')
     const context = Vue.computed(() => group.value);
@@ -48,20 +48,8 @@ const app = {
       /////////////////////////////
       channelToAdd: "",
       groupToAdd: "",
-      tab: "Chats",
-      /////////////////////////////
-      eventName: "",
-      eventDesc: "",
-      eventStart: "",
-      eventEnd: "",
-      eventLocation: "",
-      editEvent: {
-        name: "",
-        desc: "",
-        startTime: "",
-        endTime: "",
-        location: ""
-      },
+      tab: "Chats",      
+      editProfile: false
     }
   },
 
@@ -107,9 +95,14 @@ const app = {
           this.imageDownloads[m.attachment.magnet] = URL.createObjectURL(blob)
         }
       }
+    },
+
+    channels(newChannels, oldChannels) {
+      if (oldChannels.length === 0 && newChannels.length !== 0) {
+        this.channel = newChannels[0]
+      }
     }
   },
-  /////////////////////////////
 
   computed: {
     groups() {
@@ -192,8 +185,6 @@ const app = {
       this.editID = ''
     },
 
-    /////////////////////////////
-    // Problem 1 solution
     async setUsername() {
       try {
         this.usernameResult = await this.resolver.requestUsername(this.preferredUsername)
@@ -202,9 +193,6 @@ const app = {
         this.usernameResult = e.toString()
       }
     },
-    /////////////////////////////
-
-    /////////////////////////////
 
     onImageAttachment(event) {
       const file = event.target.files[0]
@@ -235,46 +223,6 @@ const app = {
 
     setTab(tab) {
       this.tab = tab;
-    },
-
-    async createEvent() {
-      const event = {
-        type: 'Event',
-        name: this.eventName,
-        desc: this.eventDesc,
-        startTime: this.eventStart,
-        endTime: this.eventEnd,
-        location: this.eventLocation,
-        context: [this.group]
-      }
-      console.log(event);
-      this.$gf.post(event);
-      this.eventName="";
-      this.eventDesc="";
-      this.eventStart="";
-      this.eventEnd ="";
-      this.eventLocation = "";
-    },
-
-    startEditEvent(event) {
-      this.editID= event.id
-      // And copy over it's existing text
-      this.editEvent = {
-        name: event.name,
-        desc: event.desc,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        location: event.location
-      }
-    },
-
-    saveEditEvent(event) {
-      event.name = this.editEvent.name
-      event.desc = this.editEvent.desc
-      event.startTime = this.editEvent.startTime
-      event.endTime = this.editEvent.endTime
-      event.location = this.editEvent.location
-      this.editID = ''
     },
   }
 }
@@ -665,7 +613,126 @@ const Rsvp = {
   template: '#rsvp'
 }
 
-app.components = { Name, Like, Read, Reply, Profile, Rsvp }
+const Events = {
+  props: ["group", "actorstousernames", "channels"],
+
+  components: {
+    'rsvp': Rsvp, 
+  },
+
+  setup(props) {
+    const $gf = Vue.inject('graffiti')
+    const group = Vue.toRef(props, 'group')
+    const channels = Vue.toRef(props, 'channels')
+    const {objects: messagesRaw} = $gf.useObjects([group])
+    return { group, messagesRaw, channels }
+  },
+
+  data() {
+    return {
+      editID: "",
+      eventForm: {
+        name: "",
+        desc: "",
+        startTime: "",
+        endTime: "",
+        location: "",
+      },
+      editEvent: {
+        name: "",
+        desc: "",
+        startTime: "",
+        endTime: "",
+        location: ""
+      },
+      postToChannel: '',
+      months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
+      filterBy: "all",
+      sortBy: "EL",
+    }
+  }, 
+
+  computed: {
+    events() {
+      let events = this.messagesRaw.filter(m=> m.type=='Event' & m.startTime !== "");
+      return events.sort((m1, m2)=> new Date(m1.startTime) - new Date(m2.startTime));
+    },
+
+    filteredEvents() {
+      console.log(this.filterBy, this.sortBy);
+      let filterEvents = this.events;
+      if (this.filterBy !== "all")  {
+        filterEvents = filterEvents.filter(m=> new Date(m.endTime) > new Date())
+      }
+      if (this.sortBy === "LE") {
+        filterEvents = filterEvents.sort((m1, m2)=> new Date(m2.startTime) - new Date(m1.startTime))
+      } else {
+        filterEvents = filterEvents.sort((m1, m2)=> new Date(m1.startTime) - new Date(m2.startTime))
+      }
+      return filterEvents;
+    }
+  },
+
+  methods: {
+    async createEvent() {
+      const event = {
+        ...this.eventForm,
+        type: 'Event',
+        context: [this.group]
+      }
+      this.$gf.post(event)
+      if (this.postToChannel.length > 0) {
+        let messageText = "**New Event**\n"
+        messageText += this.eventForm.name + "\n" + this.eventForm.desc + "\nTime: "
+        const start = new Date(event.startTime)
+        const end = new Date(event.endTime)
+        let time = ""
+        console.log(start.toLocaleDateString() === end.toLocaleDateString())
+        if (start.toLocaleDateString() === end.toLocaleDateString()) {
+          time = start.toLocaleDateString()  + " " + start.toLocaleTimeString() + "-" + end.toLocaleTimeString()
+        } else {
+          time = start.toLocaleString()  + "-" + end.toLocaleString()
+        }
+        messageText += time + "\nLocation: " + this.eventForm.location
+        const message = {
+          type: 'Note',
+          content: messageText,
+          channel: this.postToChannel,
+          context: [this.group]
+        }
+        this.$gf.post(message);
+      }
+      for (const key of Object.keys(this.eventForm)) {
+        this.eventForm[key] = "";
+      }
+      this.postToChannel="";
+    },
+
+    startEditEvent(event) {
+      this.editID= event.id
+      this.editEvent = {
+        ...event
+      }
+    },
+
+    saveEditEvent(event) {
+      event.name = this.editEvent.name
+      event.desc = this.editEvent.desc
+      event.startTime = this.editEvent.startTime
+      event.endTime = this.editEvent.endTime
+      event.location = this.editEvent.location
+      this.editID = ''
+    },
+
+    removeEvent(event) {
+      this.$gf.remove(event)
+    },
+  },
+
+  template: '#events'
+}
+
+app.components = { Name, Like, Read, Reply, Profile, Rsvp, Events }
 Vue.createApp(app)
    .use(GraffitiPlugin(Vue))
    .mount('#app')

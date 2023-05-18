@@ -7,231 +7,160 @@
   <link rel="stylesheet" href="style.css">
   <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
 </head>
+
 <body>
   <div id="app">
-    <h1>
-      My Cool Chat App
-    </h1>
+    <header>
+      <h1>My Cool Chat App</h1>
+      <div id="header_options">
+        <profile :actor="$gf.me"></profile>
+        <button v-if="$gf.me" id="edit_profile_button" @click="editProfile = true">
+          Edit Profile
+        </button>
+        <button @click="$gf.toggleLogIn">
+          {{ $gf.me? 'Log Out' : 'Log In' }}
+        </button>
+      </div>
+    </header>
 
-    <h2 :id="myUsername ? 'my-heading' : '' ">
-      Welcome {{myUsername}}
-    </h2>
-
-    <p>
-      <button @click="$gf.toggleLogIn">
-        <!-- If we have a user ID, we're logged in so show "Log Out" -->
-        <!-- Otherwise, show "Log In" -->
-        {{ $gf.me? 'Log Out' : 'Log In' }}
-      </button>
-    </p>
-
-    <!-- If we're not logged in, hide everything except the login button -->
     <template v-if="$gf.me">
-
-      <!-- Begin Problem 1 Solution -->
-      <div id="userDetails">
-        <h3>My Info</h3>
-        <p>
-          <form @submit.prevent="setUsername">
-            <input v-model="preferredUsername" placeholder="Choose a username..."/>
-            <button type="submit" value="Set Username">Set Username</button>
-          </form>
-          <p id="result" class="transform">{{ usernameResult }}</p>
-        </p>
-        <!-- End Problem 1 Solution -->
-  
-        <p>
-          My Name: <name :actor="$gf.me" :editable="true"></name>
-        </p>
-        <profile :actor="$gf.me" :editable="true"></profile>  
-      </div>
-
-      <h3>{{group}}</h3>
-      <p class= "group-form">
-        <label for="group">
-          Change the organization you're in:
-        </label>
-        <select v-model="group">
-          <option v-for="g of groups">{{g}}</option>
-        </select>
-        <label for="groupToAdd">
-          Create a new group
-        </label>
-        <input id="group" v-model="groupToAdd"/>
-        <button @click="addGroup">Add Group</button>
-      </p>
-
-      <div id="tabOptions" class="w3-bar w3-blue-gray">
-        <button class="w3-bar-item w3-button" @click="setTab('Chats')" :class="tab=='Chats' ? 'checked' : '.notchecked' ">Chats</button>
-        <button class="w3-bar-item w3-button" @click="setTab('Events')" :class="tab=='Events' ? 'checked' : '.notchecked' ">Events</button>
-      </div>
-
-      <div v-if="tab=='Chats'">
-        <p class= "recipient-container">
-          <label for="channel">
-            Change the channel you're chatting in:
-          </label>
-          <select v-model="channel">
-            <option v-for="context of channels">{{context}}</option>
-          </select>
-          <label for="channelToAdd">
-            Create a new channel
-          </label>
-          <input id="channel" v-model="channelToAdd"/>
-          <button @click="addChannel">Add Channel</button>
-        </p>
-        <hr>
-
-        <!-- A form for sending messages -->
-        <form @submit.prevent="sendMessage" class="sendmsg">
-          <input v-model="messageText" placeholder="Type a message..."/>
-          <input type="file" accept="image/*" @change="onImageAttachment"/>
-          <button type="submit" value="Send" :disabled="channel.length == 0 | messageText.length==0">
-            Send
+      <div id="edit_profile_screen" v-if="editProfile" @click="editProfile = false">
+        <div id="edit_profile_modal" @click="(event)=>event.stopPropagation()">
+          <button class="button_background" id="close_button" @click="editProfile = false">
+            Close X
           </button>
-        </form>
-        <ol>
-          <!-- List all the messages -->
-          <li v-for="message of messages" :key="message.id">
-  
-            <!-- Display and edit form if we're editing a message -->
-            <form v-if="editID==message.id" @submit.prevent="saveEditMessage(message)">
-              <input v-model="editText">
-              <input type="submit" value="Save"/>
+          <div id="userDetails">
+            <h3>My Info</h3>
+            <form @submit.prevent="setUsername">
+              <input v-model="preferredUsername" placeholder="Choose a username..."/>
+              <button type="submit" value="Set Username">Set Username</button>
             </form>
-  
-            <!-- Otherwise, display a bunch of properties from the message -->
-            <ul v-else class="message-contents">
-              <span class="message-from">
-                <profile :actor="message.actor"></profile>
-                <name :actor="message.actor"></name>
-                <span> [{{actorsToUsernames[message.actor]}}] sent</span>
-              </span>
-              <li>
-                {{ message.content }} 
-              </li>
-              <li v-if="message.attachment && message.attachment.magnet in imageDownloads">
-                <span v-if="imageDownloads[message.attachment.magnet]=='downloading'">
-                  Image is downloading...
-                </span>
-                <span v-else-if="imageDownloads[message.attachment.magnet]=='error'">
-                  Image could not be downloaded!
-                </span>
-                <img v-else :src="imageDownloads[message.attachment.magnet]" />
-              </li>
-              <summary class="summary">
-                <details class="detail">
-                  <li>
-                    Published at Time: {{ message.published }}
-                  </li>
-                  <li>
-                    Last Edited at Time: {{ message.updated }}
-                  </li>
-                  <li>
-                    From Actor ID: {{ message.actor }}
-                  </li>
-                  <li>
-                    ID: {{ message.id }}
-                  </li>
-                  <li>
+            <p id="result" class="transform">{{ usernameResult }}</p>
+            <p>
+              My Name: <name :actor="$gf.me" :editable="true"></name>
+            </p>
+            <profile :actor="$gf.me" :editable="true"></profile>  
+          </div>
+        </div>
+      </div> 
+      <h2 :id="myUsername ? 'my-heading' : '' ">
+        Welcome {{myUsername}}
+      </h2> 
+
+      <div id="below_header">
+        <div id="sidebar">
+          <h3>{{group}}</h3>
+          <p class= "group-form">
+            <label for="group">
+              Change the organization you're in:
+            </label>
+            <select v-model="group">
+              <option v-for="g of groups">{{g}}</option>
+            </select>
+            <label for="groupToAdd">
+              Create a new group
+            </label>
+            <input id="group" v-model="groupToAdd"/>
+            <button @click="addGroup">Add Group</button>
+          </p>
+          <hr>
+          <p class= "recipient-container">
+            <label for="channel">
+              Change the channel you're chatting in:
+            </label>
+            <select v-model="channel">
+              <option v-for="context of channels">{{context}}</option>
+            </select>
+            <label for="channelToAdd">
+              Create a new channel
+            </label>
+            <input id="channel" v-model="channelToAdd"/>
+            <button @click="addChannel">Add Channel</button>
+          </p>
+        </div>
+        
+        <div id="rest">
+          <div id="tabOptions" class="w3-bar w3-blue-gray">
+            <button class="w3-bar-item w3-button" @click="setTab('Chats')" :class="tab=='Chats' ? 'checked' : '.notchecked' ">Chats</button>
+            <button class="w3-bar-item w3-button" @click="setTab('Events')" :class="tab=='Events' ? 'checked' : '.notchecked' ">Events</button>
+          </div>
+    
+          <div v-if="tab=='Chats'" id="chatsTab">
+            <div v-if="channel !== ''">
+              <form @submit.prevent="sendMessage" id="msg-form">
+                <input v-model="messageText" placeholder="Type a message..."/>
+                <input type="file" accept="image/*" @change="onImageAttachment"/>
+                <button type="submit" value="Send" :disabled="channel.length == 0 | messageText.length==0">
+                  Send
+                </button>
+              </form>
+              <ol>
+                <li v-for="message of messages" :key="message.id">
+                  <form v-if="editID==message.id" @submit.prevent="saveEditMessage(message)">
+                    <input v-model="editText">
+                    <input type="submit" value="Save"/>
+                  </form>
+                  <ul v-else class="message-contents">
+                    <div class="message-from">
+                      <profile :actor="message.actor"></profile>
+                      <span>
+                        <name :actor="message.actor"></name>
+                        <span> [{{actorsToUsernames[message.actor]}}] sent</span>
+                      </span>
+                      <span class="date">({{ new Date(message.published).toLocaleString() }})</span>
+                    </div>
+                    <li class="msg-text">
+                      {{ message.content }} 
+                    </li>
+                    <li v-if="message.attachment && message.attachment.magnet in imageDownloads">
+                      <span v-if="imageDownloads[message.attachment.magnet]=='downloading'">
+                        Image is downloading...
+                      </span>
+                      <span v-else-if="imageDownloads[message.attachment.magnet]=='error'">
+                        Image could not be downloaded!
+                      </span>
+                      <img v-else :src="imageDownloads[message.attachment.magnet]" />
+                    </li>
                     <read :messageid="message.id" :actordict="actorsToUsernames"></read>
-                  </li>
-                </details>
-              </summary>
-  
-              <template v-if="message.actor==$gf.me">
-                <li class="message-buttons">
-                  <button @click="removeMessage(message)">
-                    Delete Message
-                  </button>
-                  <button @click="startEditMessage(message)">
-                    Edit Message
-                  </button>
+                    <template v-if="message.actor==$gf.me">
+                      <li class="message-buttons">
+                        <button @click="removeMessage(message)">
+                          Delete Message
+                        </button>
+                        <button @click="startEditMessage(message)">
+                          Edit Message
+                        </button>
+                      </li>
+                    </template>
+        
+                    <li>
+                      <like :messageid="message.id"></like>
+                    </li>
+                    <li>
+                      <reply :messageid="message.id" :actordict="actorsToUsernames"></reply>
+                    </li>
+                  </ul>
                 </li>
-              </template>
-  
-              <li>
-                <like :messageid="message.id"></like>
-              </li>
-              <li>
-                <reply :messageid="message.id" :actordict="actorsToUsernames"></reply>
-              </li>
-            </ul>
-          </li>
-        </ol>
-      </div>
-
-      <div v-else>
-        <!-- A form for creating events -->
-        <form @submit.prevent="createEvent" class="sendevent">
-          <h3>Create a New Event</h3>
-          <label for="eventName">Event Name:</label>
-          <input name="eventName" v-model="eventName"/>
-          <label for="eventDesc">Event Description:</label>
-          <input name="eventDesc" v-model="eventDesc"/>
-          <label for="eventStart">Event Start:</label>
-          <input type="datetime-local" id="start" name="eventStart" v-model="eventStart">
-          <label for="eventEnd">Event Start:</label>
-          <input type="datetime-local" id="end" name="eventEnd" v-model="eventEnd">
-          <label for="location">Location:</label>
-          <input id="location" name="location" v-model="eventLocation">
-          <button type="submit" value="Send">
-            Create
-          </button>
-        </form>
-        <hr>
-        <section id="events">
-          <div v-for="event of events">
-            <form v-if="editID==event.id" @submit.prevent="saveEditEvent(event)">
-              <label for="eventName">Event Name:</label>
-              <input name="eventName" v-model="editEvent.name"/>
-              <label for="eventDesc">Event Description:</label>
-              <input name="eventDesc" v-model="editEvent.desc"/>
-              <label for="eventStart">Event Start:</label>
-              <input type="datetime-local" id="start" name="eventStart" v-model="editEvent.startTime">
-              <label for="eventEnd">Event Start:</label>
-              <input type="datetime-local" id="end" name="eventEnd" v-model="editEvent.endTime">
-              <label for="location">Location:</label>
-              <input id="location" name="location" v-model="editEvent.location">
-              <button type="submit" value="Save"> Save </button>
-            </form>
-
-            <div v-else class="event-contents">
-              <h4> {{ event.name }} </h4>
-              <p> {{ event.desc }} </p>
-              <p>Start Time: <input type="datetime-local" id="end" name="eventEnd" v-model="event.startTime" readonly></p>
-              <p>End Time: <input type="datetime-local" id="end" name="eventEnd" v-model="event.endTime" readonly></p>
-              <p> Location: {{ event.location }} </p>
-
-              <template v-if="event.actor==$gf.me">
-                <div class="message-buttons">
-                  <button @click="removeMessage(event)"> Delete Event </button>
-                  <button @click="startEditEvent(event)"> Edit Event </button>
-                </div>
-              </template>
-              <rsvp :event="event.id" :actordict="actorsToUsernames"></rsvp>
+              </ol>
             </div>
           </div>
-        </section>
-      </div>
+    
+          <div v-else id="eventsTab">
+            <events :group="group" :actorstousernames="actorsToUsernames" :channels="channels"></events>
+          </div>
+        </div>
+      </div>    
     </template>
   </div>
 
   <template id="name">
     <span v-if="!editing">
-
-      <!-- If we're not editing the name-->
-      <!-- Display the profile's name, if it exists -->
-      <!-- or anonymous if it doesn't -->
       {{ profile? profile.name : 'Anonymous' }}
-
-      <!-- Also if the name is "editable" add an edit button -->
       <button v-if="editable" @click="editName">
         Edit Name
       </button>
     </span>
 
-    <!-- If we're in the editing state, create something to edit the name-->
     <form v-else @submit.prevent="saveName">
       <input v-model="editText"/>
       <input type="submit" value="Save Name"/>
@@ -239,7 +168,7 @@
   </template>
 
   <template id="profile">
-    <span v-if="editable">
+    <span v-if="editable" id="my-profile-container">
       <p> My Profile Picture: </p>
       <span v-if="!image">
         Image could not be downloaded!
@@ -271,12 +200,15 @@
           <input type="submit" value="Save"/>
         </form>
         <ul v-else class="message-contents">
-          <span class="message-from">
+          <div class="message-from">
             <profile :actor="message.actor"></profile>
-            <name :actor="message.actor"></name>
-            <span> [{{actordict[message.actor]}}] replied</span>
-          </span>
-          <li>
+            <span>
+              <name :actor="message.actor"></name>
+              <span> [{{actordict[message.actor]}}] sent</span>
+            </span>
+            <span class="date">({{ new Date(message.published).toLocaleString() }})</span>
+          </div>
+          <li class=" msg-text">
             {{message.content}}
           </li>
           <li v-if="message.attachment && message.attachment.magnet in imageDownloads">
@@ -288,25 +220,7 @@
             </span>
             <img v-else :src="imageDownloads[message.attachment.magnet]" />
           </li>
-          <summary class="summary">
-            <details class="detail">
-              <li>
-                Published at Time: {{ message.published }}
-              </li>
-              <li>
-                Last Edited at Time: {{ message.updated }}
-              </li>
-              <li>
-                From Actor ID: {{ message.actor }}
-              </li>
-              <li>
-                ID: {{ message.id }}
-              </li>
-              <li>
-                <read :messageid="message.id" :actordict="actordict"></read>
-              </li>
-            </details>
-          </summary>
+          <read :messageid="message.id" :actordict="actordict"></read>
           <template v-if="message.actor==$gf.me">
             <li class="message-buttons">
               <button @click="removeMessage(message)">
@@ -320,7 +234,7 @@
         </ul>
       </li>
       <li>
-        <form @submit.prevent="sendReply" class="sendmsg">
+        <form @submit.prevent="sendReply" id="msg-form">
           <input v-model="messageText" placeholder="Type a reply..."/>
           <input type="file" accept="image/*" @change="onImageAttachment"/>
           <input type="submit" value="Send" :disabled="messageText.length==0"/>
@@ -330,17 +244,98 @@
   </template>
   
   <template id="read">
-    Read By: {{ readsUsername.join(', ') }}
+    <details class="detail">
+      <summary class="summary"> Read By: </summary>
+      {{ readsUsername.join(', ') }}
+    </details>      
   </template>
 
   <template id="rsvp">
-    <h4><label for="answer">RSVP: </label></h4>
-    <select name="answer" v-model="answer" @change="sendRSVP" :class="answer">
-      <option>Yes</option>
-      <option>No</option>
-      <option>Maybe</option>
-    </select>
-    <p>RSVPed Yes: {{ rsvpsUsername.join(', ') }}</p>
+    <div id="event-rsvp">
+      <h4><label for="answer">RSVP: </label></h4>
+      <select name="answer" v-model="answer" @change="sendRSVP" :class="answer">
+        <option>Yes</option>
+        <option>No</option>
+        <option>Maybe</option>
+      </select>
+    <p id="rsvp-yes">RSVPed Yes: {{ rsvpsUsername.join(', ') }}</p>
+    </div>
+  </template>
+
+  <template id="events">
+    <details open>
+      <summary><h3>Create a New Event</h3></summary>
+      <form @submit.prevent="createEvent" id="event-form">
+        <label for="eventName">Event Name:</label>
+        <input name="eventName" v-model="eventForm.name" required/>
+        <label for="eventDesc">Event Description:</label>
+        <textarea name="eventDesc" v-model="eventForm.desc"></textarea>
+        <label for="eventStart">Event Start:</label>
+        <input type="datetime-local" name="eventStart" v-model="eventForm.startTime" required>
+        <label for="eventEnd">Event Start:</label>
+        <input type="datetime-local" name="eventEnd" v-model="eventForm.endTime" required>
+        <label for="location">Location:</label>
+        <input id="location" name="location" v-model="eventForm.location" required>
+        <label for="location">Choose a channel to pub to:</label>
+        <select v-model="postToChannel">
+          <option v-for="context of channels">{{context}}</option>
+        </select>
+        <button type="submit" value="Send"> Create Event </button>
+      </form>
+    </details>
+    <hr>
+    <div id="events-options">
+      <select id="filter" v-model="filterBy">
+        <option value="all">All Events</option>
+        <option value="future">Upcoming Events</option>
+      </select>
+      <select id="filter" v-model="sortBy">
+        <option value="EL">Earliest to Latest</option>
+        <option value="LE">Latest to Earliest</option>
+      </select>
+    </div>
+    <section id="events-list">
+      <div v-for="event of filteredEvents"  class="event-contents">
+        <form v-if="editID==event.id" @submit.prevent="saveEditEvent(event)" id="event-form">
+          <label for="eventName">Event Name:</label>
+          <input name="eventName" v-model="editEvent.name"/>
+          <label for="eventDesc">Event Description:</label>
+          <textarea name="eventDesc" v-model="editEvent.desc"></textarea>
+          <label for="eventStart">Event Start:</label>
+          <input type="datetime-local" id="start" name="eventStart" v-model="editEvent.startTime">
+          <label for="eventEnd">Event Start:</label>
+          <input type="datetime-local" id="end" name="eventEnd" v-model="editEvent.endTime">
+          <label for="location">Location:</label>
+          <input id="location" name="location" v-model="editEvent.location">
+          <button type="submit" value="Save"> Save </button>
+        </form>
+
+        <template v-else class="event-contents">
+          <div class="event-date">
+            <div>{{months[new Date(event.startTime).getMonth()] }} </div>
+            <div>{{new Date(event.startTime).getDate() }} </div>
+          </div>
+          <div class="event-details">
+            <h4> {{ event.name }} </h4>
+            <p><i> {{ event.desc }}</i></p>
+            <p><strong>Location</strong>: {{ event.location }} </p>
+            <p> <strong>Time</strong>: 
+              {{ new Date(event.startTime).toLocaleDateString() === new Date(event.endTime).toLocaleDateString() ?
+                new Date(event.startTime).toLocaleDateString() + " " + new Date(event.startTime).toLocaleTimeString() + "-" + new Date(event.endTime).toLocaleTimeString() :
+                new Date(event.startTime).toLocaleString() + "-" + new Date(event.endTime).toLocaleString()
+              }}
+            </p>
+            <template v-if="event.actor==$gf.me" >
+              <div class="message-buttons">
+                <button @click="removeEvent(event)"> Delete Event </button>
+                <button @click="startEditEvent(event)"> Edit Event </button>
+              </div>
+            </template>
+          </div>
+          <rsvp :event="event.id" :actordict="actorstousernames"></rsvp>
+        </template>
+      </div>
+    </section>
   </template>
 </body>
 </html>
